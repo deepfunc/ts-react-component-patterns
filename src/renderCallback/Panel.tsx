@@ -8,7 +8,7 @@ const Panel: SFC<Props> = ({title, children}) => (
         render={({show, toggle}) => (
             <div onClick={toggle}>
                 <h1>{title}</h1>
-                {show ? {children} : null}
+                {show ? children : null}
             </div>
         )}
     />

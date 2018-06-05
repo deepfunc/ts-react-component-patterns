@@ -181,7 +181,7 @@ declare type Omit<T, K extends keyof T> = Pick<T, DiffPropertyNames<keyof T, K>>
 
 
 
-## 渲染回调 设计模式
+## 渲染回调模式
 
 有一种重用组件逻辑的设计方式是：把组件的  `children` 变成一个渲染回调函数或者暴露一个 `render` 函数属性出来。我们将用这种思路来做一个折叠面板的场景应用。
 
@@ -283,9 +283,9 @@ class Toggleable extends Component<Props, State> {
 
 
 
-运行起来，跟我们期待的效果一致：）
+这里我们不谈样式的事情，运行起来看看，跟期待的效果是否一致？
 
-
+![](images/render-callback-collapse-demo.gif)
 
 > 这种方式对于需要扩展渲染内容时非常有用：Toggleable 组件并不知道也不关心具体的渲染内容，但他控制着显示状态逻辑！
 
@@ -293,3 +293,141 @@ class Toggleable extends Component<Props, State> {
 
 ## 组件注入模式
 
+为了使组件逻辑更具伸缩性，下面我们来说说组件注入模式。
+
+
+
+那么什么是组件注入模式呢？如果你用过 `React-Router` ，你已经使用过这种模式来定义路由了：
+
+```react
+<Route path="/example" component={Example}/>
+```
+
+
+
+不同于渲染回调模式，我们使用 `component` 属性“注入”一个组件。为了演示这个模式是如何工作的，我们将重构折叠面板这个场景，首先写一个可重用的 PanelItem 组件：
+
+```typescript
+import { ToggleableComponentProps } from './Toggleable';
+
+type PanelItemProps = { title: string };
+
+const PanelItem: SFC<PanelItemProps & ToggleableComponentProps> = props => {
+    const {title, children, show, toggle} = props;
+
+    return (
+        <div onClick={toggle}>
+            <h1>{title}</h1>
+            {show ? children : null}
+        </div>
+    );
+};
+```
+
+
+
+然后重构 Toggleable 组件：加入新的 `component` 属性。对比先头的代码，我们需要做出如下变化：
+
+- `children` 属性类型更改为 function 或者 ReactNode（当使用 `component` 属性时）
+- `component` 属性将传递一个组件注入进去，这个注入组件的属性定义上需要有 `ToggleableComponentProps` （其实是原来的 `ToggleableRenderArgs` ，还记得吗？）
+- 还需要定义一个 ` props` 属性，这个属性将用来传递注入组件需要的属性值。我们会设置 `props` 可以拥有任意的属性，因为我们并不知道注入组件会有哪些属性，当然这样我们会丢失 TS 的严格类型检查...
+
+```typescript
+const defaultInjectedProps = {props: {} as { [propName: string]: any }};
+type DefaultInjectedProps = typeof defaultInjectedProps;
+type Props = Partial<{
+    children: RenderCallback | ReactNode;
+    render: RenderCallback;
+    component: ComponentType<ToggleableComponentProps<any>>
+}> & DefaultInjectedProps;
+```
+
+
+
+下一步我们把原来的 `ToggleableRenderArgs`  修改为 `ToggleableComponentProps` ，允许将注入组件需要的属性通过 `<Toggleable props={...}/> ` 这样来传递：
+
+```typescript
+type ToggleableComponentProps<P extends object = object> = {
+    show: boolean;
+    toggle: Toggleable['toggle'];
+} & P;
+```
+
+
+
+现在我们还需要重构一下 `render` 方法：
+
+```typescript
+render() {
+    const {component: InjectedComponent, children, render, props} = this.props;
+    const {show} = this.state;
+    const renderProps = {show, toggle: this.toggle};
+
+    if (InjectedComponent) {
+        return (
+            <InjectedComponent {...props} {...renderProps}>
+                {children}
+            </InjectedComponent>
+        );
+    }
+
+    if (render) {
+        return render(renderProps);
+    } else if (isFunction(children)) {
+        return children(renderProps);
+    } else {
+        return null;
+    }
+}
+```
+
+
+
+我们已经完成了整个 Toggleable 组件的修改，下面是完整的代码：
+
+![](images/inject-component-toggleable.png)
+
+
+
+最后我们写一个 `PanelViaInjection` 组件来应用组件注入模式：
+
+```typescript
+import React, { SFC } from 'react';
+import { Toggleable } from './Toggleable';
+import { PanelItemProps, PanelItem } from './PanelItem';
+
+const PanelViaInjection: SFC<PanelItemProps> = ({title, children}) => (
+    <Toggleable component={PanelItem} props={{title}}>
+        {children}
+    </Toggleable>
+);
+```
+
+> 注意：`props` 属性没有类型安全检查，因为他被定义为了包含任意属性的可索引类型：
+>
+> `{ [propName: string]: any }`
+
+
+
+现在我们可以利用这种方式来重现折叠面板场景了：
+
+```typescript
+class Collapse extends Component {
+
+    render() {
+        return (
+            <div>
+                <PanelViaInjection title="标题一"><p>内容1</p></PanelViaInjection>
+                <PanelViaInjection title="标题二"><p>内容2</p></PanelViaInjection>
+                <PanelViaInjection title="标题三"><p>内容3</p></PanelViaInjection>
+            </div>
+        );
+    }
+}
+```
+
+
+
+## 泛型组件
+
+在组件注入模式的例子中，`props` 属性丢失了类型安全检查，我们如何去修复这个问题呢？

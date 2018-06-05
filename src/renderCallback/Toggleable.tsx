@@ -10,7 +10,7 @@ type RenderCallback = (args: ToggleableRenderArgs) => ReactNode;
 type ToggleableRenderArgs = {
     show: boolean;
     toggle: Toggleable['toggle'];
-}
+};
 
 // 状态相关
 const initialState = {show: false};
