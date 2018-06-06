@@ -1,13 +1,14 @@
 import React, { Component, ComponentType, ReactNode, MouseEvent } from 'react';
 import { isFunction } from '../utils';
 
-const defaultInjectedProps = {props: {} as { [propName: string]: any }};
-type DefaultInjectedProps = typeof defaultInjectedProps;
-type Props = Partial<{
+type DefaultInjectedProps<P extends object = object> = { props: P };
+const defaultInjectedProps: DefaultInjectedProps = {props: {}};
+
+type Props<P extends object = object> = Partial<{
     children: RenderCallback | ReactNode;
     render: RenderCallback;
-    component: ComponentType<ToggleableComponentProps<any>>
-} & DefaultInjectedProps>;
+    component: ComponentType<ToggleableComponentProps<P>>
+} & DefaultInjectedProps<P>>;
 
 type RenderCallback = (args: ToggleableComponentProps) => ReactNode;
 type ToggleableComponentProps<P extends object = object> = {
@@ -18,8 +19,11 @@ type ToggleableComponentProps<P extends object = object> = {
 const initialState = {show: false};
 type State = Readonly<typeof initialState>;
 
-class Toggleable extends Component<Props, State> {
+class Toggleable<T extends object = object> extends Component<Props<T>, State> {
 
+    static ofType<T extends object>() {
+        return Toggleable as Constructor<Toggleable<T>>;
+    }
     static readonly defaultProps: Props = defaultInjectedProps;
     readonly state: State = initialState;
 

@@ -16,6 +16,8 @@
 
 
 
+
+
 ## 无状态组件
 
 无状态组件就是没有 `state` 的，通常我们也叫做纯函数组件。用原生 JS 我们可以这样写一个按钮组件：
@@ -62,6 +64,8 @@ type SFC<P = {}> = StatelessComponent<P>;
 最后我们的代码是这样的：
 
 ![](images/stateless.png)
+
+
 
 
 
@@ -112,6 +116,8 @@ this.state = {count: 1};
 
 
 
+
+
 ## 属性默认值
 
 让我们来扩展一下纯函数按钮组件，加上一个颜色属性：
@@ -159,7 +165,7 @@ const Button: SFC<Props> = ({onClick: handleClick, color, children}) => (
 
 ![](images/with-default-props.png)
 
-这里涉及到两个 `type` 定义：
+这里涉及到两个 type 定义，写在 `src/types/global.d.ts` 文件里面：
 
 ```typescript
 declare type DiffPropertyNames<T extends string, U extends string> = { [P in T]: P extends U ? never: P }[T];
@@ -178,6 +184,8 @@ declare type Omit<T, K extends keyof T> = Pick<T, DiffPropertyNames<keyof T, K>>
 现在使用这个组件时默认值属性已经发生作用，是可选的；并且在组件内部使用这些默认值属性不用再手动断言了，这些默认值属性就是必填属性！感觉还不错对吧 ：）
 
 > `withDefautProps` 函数同样可以应用在 `stateful` 有状态的类组件上。
+
+
 
 
 
@@ -291,6 +299,8 @@ class Toggleable extends Component<Props, State> {
 
 
 
+
+
 ## 组件注入模式
 
 为了使组件逻辑更具伸缩性，下面我们来说说组件注入模式。
@@ -339,7 +349,7 @@ type Props = Partial<{
     children: RenderCallback | ReactNode;
     render: RenderCallback;
     component: ComponentType<ToggleableComponentProps<any>>
-}> & DefaultInjectedProps;
+} & DefaultInjectedProps>;
 ```
 
 
@@ -428,6 +438,96 @@ class Collapse extends Component {
 
 
 
+
+
 ## 泛型组件
 
-在组件注入模式的例子中，`props` 属性丢失了类型安全检查，我们如何去修复这个问题呢？
+在组件注入模式的例子中，`props` 属性丢失了类型安全检查，我们如何去修复这个问题呢？估计你已经猜出来了，我们可以把 Toggleable 组件重构为泛型组件！
+
+
+
+下来我们开始重构 Toggleable 组件。首先我们需要让 `props` 支持泛型：
+
+```typescript
+type DefaultInjectedProps<P extends object = object> = { props: P };
+const defaultInjectedProps: DefaultInjectedProps = {props: {}};
+                          
+type Props<P extends object = object> = Partial<{
+    children: RenderCallback | ReactNode;
+    render: RenderCallback;
+    component: ComponentType<ToggleableComponentProps<P>>
+} & DefaultInjectedProps<P>>;
+```
+
+
+
+然后让 Toggleable 的 class 也支持泛型：
+
+```typescript
+class Toggleable<T extends object = object> extends Component<Props<T>, State> {}
+```
+
+看起来好像已经搞定了！
+
+等一下，有个问题... 我们怎么在 JSX 里面使用这个泛型？？不幸的是这样确实不行，我们还有一步工作要做，加入一个静态方法 `ofType` ，用来进行构造函数的类型转换：
+
+```typescript
+static ofType<T extends object>() {
+    return Toggleable as Constructor<Toggleable<T>>;
+}
+```
+
+这里用到一个 type：`Constructor`，依然定义在 `src/types/global.d.ts` 里面：
+
+```typescript
+declare type Constructor<T = {}> = { new(...args: any[]): T };
+```
+
+
+
+好了，我们完成了所有的工作，下面是 Toggleable 重构后的完整代码：
+
+
+
+现在我们来看看怎么使用这个泛型组件，重构下原来的 PanelViaInjection 组件：
+
+```typescript
+import React, { SFC } from 'react';
+import { Toggleable } from './Toggleable';
+import { PanelItemProps, PanelItem } from './PanelItem';
+
+const ToggleableOfPanelItem = Toggleable.ofType<PanelItemProps>();
+
+const PanelViaInjection: SFC<PanelItemProps> = ({title, children}) => (
+    <ToggleableOfPanelItem component={PanelItem} props={{title}}>
+        {children}
+    </ToggleableOfPanelItem>
+);
+```
+
+所有的功能都能像原来的代码一样工作，并且现在 `props` 属性也支持 TS 类型检查了，很棒有木有！：）
+
+![](images/generic-toggleable-demo.gif)
+
+
+
+
+
+## 高阶组件
+
+前面我们已经实现了 Toggleable 的渲染回调模式，那么很自然的我们可以衍生出一个 HOC 组件。
+
+> 如果对 HOC 不熟的话，可以先看下 React 官方文档对于 [HOC](https://reactjs.org/docs/higher-order-components.html) 的说明。
+
+
+
+先来看看定义 HOC 我们需要做哪些工作：
+
+- `displayName` （方便在 devtools 里面进行调试）
+- `WrappedComponent ` （可以访问原始的组件 -- 有利于调试）
+- 引入 [hoist-non-react-statics](https://github.com/mridgway/hoist-non-react-statics) 包，将原始组件的静态方法全部导出
+
+
+
+下面直接上代码 -- `withToggleable` 高阶组件：
+
