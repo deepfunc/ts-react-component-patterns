@@ -16,4 +16,12 @@ function isFunction<T extends Function>(value: any): value is T {
     return typeof value === 'function';
 }
 
-export { withDefaultProps, isFunction };
+function getComponentName(component: ComponentType<any>) {
+    return component.displayName || (component as any).name;
+}
+
+function getHOCComponentName(hocName: string, component: ComponentType<any>) {
+    return `${hocName}(${getComponentName(component)})`;
+}
+
+export { withDefaultProps, isFunction, getComponentName, getHOCComponentName };

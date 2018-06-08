@@ -1,18 +1,18 @@
-## With TypeScript 2.8：更好的 React 组件开发模式
+## With TypeScript 2.9：更好的 React 组件开发模式
 
-近两年来一直在搞 React 应用开发，TypeScript 是不久前才学上的。国内有很多讲解 React 和 TypeScript 的教程，但如何将 TypeScript 更好地应用到 React 组件开发模式的文章却几乎没有，特别是 TS 2.8的一些新特性，如：条件类型、条件类型中的类型引用、重载访问修饰符等。这些新特性如何应用于 React 组件开发？没办法只能去翻一些国外的文章，结合 TS 的官方文档慢慢摸索... 于是就有了想法把这个过程整理成文档，希望能让读到的朋友少踩点坑。无奈水平有限，难免出现错漏，欢迎大家拍砖，共同进步。
+近两年来一直在关注 React 开发，最近也开始应用 TypeScript 。国内有很多讲解 React 和 TypeScript 的教程，但如何将 TypeScript 更好地应用到 React 组件开发模式的文章却几乎没有（也可能是我没找到），特别是 TS 的一些新特性，如：条件类型、条件类型中的类型引用等。这些新特性如何应用于 React 组件开发？没办法只能去翻一些国外的文章，结合 TS 的官方文档慢慢摸索... 于是就有了想法把这个过程整理成文档。
 
 本文内容很长，希望你有个舒服的椅子，我们马上开始。
 
-> 所有示例代码都放在 [Github仓库](https://github.com/deepfunc/ts-react-component-patterns)
->
-> 所有示例代码均使用 React 16.3.2、TypeScript 2.8 + strict mode 编写
+> 所有示例代码均使用 React 16.3、TypeScript 2.9 + strict mode 编写
 
 
 
 ## 开始
 
-本文假设你已经对 React、TypeScript 有一定的了解。我不会讲到例如：webpack 打包、Babel 转码、TypeScript 编译选项这一类的问题，而将一切焦点放在如何将 TS 2.8 更好地应用到 React 组件设计模式中。首先，我们来谈谈无状态组件。
+本文假设你已经对 React、TypeScript 有一定的了解。我不会讲到例如：webpack 打包、Babel 转码、TypeScript 编译选项这一类的问题，而将一切焦点放在如何将 TS 2.8+ 更好地应用到 React 组件设计模式中。
+
+首先，我们从无状态组件开始。
 
 
 
@@ -51,7 +51,7 @@ const Button = ({ onClick: handleClick, children }: Props) => (
 
 OK，错误没有了！好像已经完事了？其实再花点心思可以做的更好。
 
-React 中有个预定义的类型，`SFC`：
+React 中有个预定义的类型，`SFC` ：
 
 ```typescript
 type SFC<P = {}> = StatelessComponent<P>;
@@ -168,12 +168,15 @@ const Button: SFC<Props> = ({onClick: handleClick, color, children}) => (
 这里涉及到两个 type 定义，写在 `src/types/global.d.ts` 文件里面：
 
 ```typescript
-declare type DiffPropertyNames<T extends string, U extends string> = { [P in T]: P extends U ? never: P }[T];
+declare type DiffPropertyNames<T extends string | number | symbol, U> =
+    { [P in T]: P extends U ? never: P }[T];
 
-declare type Omit<T, K extends keyof T> = Pick<T, DiffPropertyNames<keyof T, K>>;
+declare type Omit<T, K> = Pick<T, DiffPropertyNames<keyof T, K>>;
 ```
 
 看一下 [TS 2.8 的新特性说明](http://www.typescriptlang.org/docs/handbook/release-notes/typescript-2-8.html) 关于 `Conditional Types` 的说明，就知道这两个 `type` 的原理了。
+
+> 注意 TS 2.9 的新变化：`keyof T` 的类型是 `string | number | symbol ` 的结构子类型。
 
 
 
@@ -181,7 +184,7 @@ declare type Omit<T, K extends keyof T> = Pick<T, DiffPropertyNames<keyof T, K>>
 
 ![](images/button-with-default-props.png)
 
-现在使用这个组件时默认值属性已经发生作用，是可选的；并且在组件内部使用这些默认值属性不用再手动断言了，这些默认值属性就是必填属性！感觉还不错对吧 ：）
+现在使用这个组件时默认值属性已经发生作用，是可选的；并且在组件内部使用这些默认值属性不用再手动断言了，这些默认值属性就是必填属性！感觉还不错对吧 :smile:
 
 > `withDefautProps` 函数同样可以应用在 `stateful` 有状态的类组件上。
 
@@ -191,7 +194,7 @@ declare type Omit<T, K extends keyof T> = Pick<T, DiffPropertyNames<keyof T, K>>
 
 ## 渲染回调模式
 
-有一种重用组件逻辑的设计方式是：把组件的  `children` 变成一个渲染回调函数或者暴露一个 `render` 函数属性出来。我们将用这种思路来做一个折叠面板的场景应用。
+有一种重用组件逻辑的设计方式是：把组件的  `children` 写成渲染回调函数或者暴露一个 `render` 函数属性出来。我们将用这种思路来做一个折叠面板的场景应用。
 
 首先我们先写一个 `Toggleable` 组件，完整的代码如下：
 
@@ -309,7 +312,7 @@ class Toggleable extends Component<Props, State> {
 
 那么什么是组件注入模式呢？如果你用过 `React-Router` ，你已经使用过这种模式来定义路由了：
 
-```react
+```jsx
 <Route path="/example" component={Example}/>
 ```
 
@@ -467,9 +470,19 @@ type Props<P extends object = object> = Partial<{
 class Toggleable<T extends object = object> extends Component<Props<T>, State> {}
 ```
 
-看起来好像已经搞定了！
+看起来好像已经搞定了！如果你是用的 TS 2.9，可以直接这样用：
 
-等一下，有个问题... 我们怎么在 JSX 里面使用这个泛型？？不幸的是这样确实不行，我们还有一步工作要做，加入一个静态方法 `ofType` ，用来进行构造函数的类型转换：
+```typescript
+const PanelViaInjection: SFC<PanelItemProps> = ({title, children}) => (
+     <Toggleable<PanelItemProps> component={PanelItem} props={{title}}>
+         {children}
+     </Toggleable>
+);
+```
+
+
+
+但是如果 <= TS 2.8 ...  JSX 里面不能直接应用泛型参数  :worried:  那么我们还有一步工作要做，加入一个静态方法 `ofType` ，用来进行构造函数的类型转换：
 
 ```typescript
 static ofType<T extends object>() {
@@ -505,7 +518,7 @@ const PanelViaInjection: SFC<PanelItemProps> = ({title, children}) => (
 );
 ```
 
-所有的功能都能像原来的代码一样工作，并且现在 `props` 属性也支持 TS 类型检查了，很棒有木有！：）
+所有的功能都能像原来的代码一样工作，并且现在 `props` 属性也支持 TS 类型检查了，很棒有木有！ :smiley:
 
 ![](images/generic-toggleable-demo.gif)
 
@@ -515,9 +528,9 @@ const PanelViaInjection: SFC<PanelItemProps> = ({title, children}) => (
 
 ## 高阶组件
 
-前面我们已经实现了 Toggleable 的渲染回调模式，那么很自然的我们可以衍生出一个 HOC 组件。
+最后我们来看下 HOC 。前面我们已经实现了 Toggleable 的渲染回调模式，那么很自然的我们可以衍生出一个 HOC 组件。
 
-> 如果对 HOC 不熟的话，可以先看下 React 官方文档对于 [HOC](https://reactjs.org/docs/higher-order-components.html) 的说明。
+> 如果对 HOC 不熟悉的话，可以先看下 React 官方文档对于 [HOC](https://reactjs.org/docs/higher-order-components.html) 的说明。
 
 
 
@@ -525,9 +538,50 @@ const PanelViaInjection: SFC<PanelItemProps> = ({title, children}) => (
 
 - `displayName` （方便在 devtools 里面进行调试）
 - `WrappedComponent ` （可以访问原始的组件 -- 有利于调试）
-- 引入 [hoist-non-react-statics](https://github.com/mridgway/hoist-non-react-statics) 包，将原始组件的静态方法全部导出
+- 引入 [hoist-non-react-statics](https://github.com/mridgway/hoist-non-react-statics) 包，将原始组件的静态方法全部“复制”到 HOC 组件上
 
 
 
 下面直接上代码 -- `withToggleable` 高阶组件：
+
+![](images/hoc-toggleable.png)
+
+
+
+现在我们来用 HOC 重写一个 Panel ：
+
+```typescript
+import { PanelItem } from './PanelItem';
+import withToggleable from './withToggleable';
+
+const PanelViaHOC = withToggleable(PanelItem);
+```
+
+
+
+然后，又可以实现折叠面板了 :smile: 
+
+```typescript
+class Collapse extends Component {
+
+    render() {
+        return (
+            <div>
+                <PanelViaHOC title="标题一"><p>内容1</p></PanelViaHOC>
+                <PanelViaHOC title="标题二"><p>内容2</p></PanelViaHOC>
+            </div>
+        );
+    }
+}
+```
+
+
+
+## 尾声
+
+感谢能坚持看完的朋友，你们真的很棒！
+
+
+
+最后，感谢 Anders Hejlsberg 和所有的 TS 贡献者，:thumbsup:
 

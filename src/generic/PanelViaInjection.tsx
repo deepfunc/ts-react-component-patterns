@@ -10,4 +10,11 @@ const PanelViaInjection: SFC<PanelItemProps> = ({title, children}) => (
     </ToggleableOfPanelItem>
 );
 
+// TS 2.9 可以直接这样写
+// const PanelViaInjection: SFC<PanelItemProps> = ({title, children}) => (
+//     <Toggleable<PanelItemProps> component={PanelItem} props={{title}}>
+//         {children}
+//     </Toggleable>
+// );
+
 export default PanelViaInjection;
