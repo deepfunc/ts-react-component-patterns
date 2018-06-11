@@ -1,6 +1,6 @@
-## With TypeScript 2.9：更好的 React 组件开发模式
+## With TypeScript 2.8+ ：更好的 React 组件开发模式
 
-近两年来一直在关注 React 开发，最近也开始应用 TypeScript 。国内有很多讲解 React 和 TypeScript 的教程，但如何将 TypeScript 更好地应用到 React 组件开发模式的文章却几乎没有（也可能是我没找到），特别是 TS 的一些新特性，如：条件类型、条件类型中的类型引用等。这些新特性如何应用于 React 组件开发？没办法只能去翻一些国外的文章，结合 TS 的官方文档慢慢摸索... 于是就有了想法把这个过程整理成文档。
+近两年来一直在关注 React 开发，最近也开始全面应用 TypeScript 。国内有很多讲解 React 和 TypeScript 的教程，但如何将 TypeScript 更好地应用到 React 组件开发模式的文章却几乎没有（也可能是我没找到），特别是 TS 的一些新特性，如：条件类型、条件类型中的类型引用等。这些新特性如何应用到 React 组件开发？没办法只能去翻一些国外的文章，结合 TS 的官方文档慢慢摸索... 于是就有了想法把这个过程整理成文档。
 
 本文内容很长，希望你有个舒服的椅子，我们马上开始。
 
@@ -583,5 +583,5 @@ class Collapse extends Component {
 
 
 
-最后，感谢 Anders Hejlsberg 和所有的 TS 贡献者，:thumbsup:
+最后，感谢 Anders Hejlsberg 和所有的 TS 贡献者 :thumbsup:
 
