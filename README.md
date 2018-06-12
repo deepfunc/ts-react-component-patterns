@@ -4,7 +4,8 @@
 
 本文内容很长，希望你有个舒服的椅子，我们马上开始。
 
-> 所有示例代码均使用 React 16.3、TypeScript 2.9 + strict mode 编写
+> 所有代码均使用 React 16.3、TypeScript 2.9 + strict mode 编写
+> [全部示例代码都在这里](https://github.com/deepfunc/ts-react-component-patterns)
 
 
 
@@ -417,7 +418,6 @@ const PanelViaInjection: SFC<PanelItemProps> = ({title, children}) => (
 ```
 
 > 注意：`props` 属性没有类型安全检查，因为他被定义为了包含任意属性的可索引类型：
->
 > `{ [propName: string]: any }`
 
 
@@ -580,6 +580,8 @@ class Collapse extends Component {
 ## 尾声
 
 感谢能坚持看完的朋友，你们真的很棒！
+
+如果觉得还不错请帮忙给个 :star:
 
 
 
